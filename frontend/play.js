@@ -75,10 +75,16 @@ function render() {
   if (state.check && !state.result) info += " — check!";
   $("info").textContent = info;
   $("resign").hidden = !!state.result; $("newgame").hidden = !state.result;
-  const rows = [];
-  for (let n = 0; n < state.moves.length; n += 2)
-    rows.push(`<tr><td class="n">${n / 2 + 1}.</td><td>${state.moves[n]}</td><td>${state.moves[n + 1] || ""}</td></tr>`);
-  $("moves").innerHTML = "<table>" + rows.join("") + "</table>";
+  const table = document.createElement("table");
+  for (let n = 0; n < state.moves.length; n += 2) {
+    const row = table.insertRow();
+    const number = row.insertCell();
+    number.className = "n";
+    number.textContent = `${n / 2 + 1}.`;
+    row.insertCell().textContent = state.moves[n];
+    row.insertCell().textContent = state.moves[n + 1] || "";
+  }
+  $("moves").replaceChildren(table);
 }
 
 function click(i, pieces, myColor) {
