@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Play - Chess Mates</title><link rel="stylesheet" href="/style.css"><script src="/common.js"></script></head>
+<body><nav id="nav"></nav><main>
+<div id="lobby" class="card" style="text-align:center"><h1>Play online</h1><p id="status">Find an opponent to start a game.</p><button id="find" disabled>Find opponent</button> <button id="cancel" class="secondary" hidden disabled>Cancel</button></div>
+<div id="gameview" class="game" hidden><div id="board"></div><div class="side card">
+<div class="player" id="opp"></div><div class="player" id="me"></div><div id="offline" class="warn" hidden>Your opponent is no longer online.</div><p id="info"></p><p id="err" class="error"></p>
+<div class="actions"><button id="resign" class="secondary" disabled>Resign</button><button id="newgame" hidden disabled>New game</button></div><h2>Moves</h2><div id="moves"></div></div></div>
+</main><script src="/play.js"></script></body></html>
