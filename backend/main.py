@@ -47,8 +47,10 @@ def me(authorization: str = Header(default="")):
 
 
 @app.post("/api/logout")
-def logout(authorization: str = Header(default="")):
-    auth.delete_session(authorization.removeprefix("Bearer "))
+async def logout(authorization: str = Header(default="")):
+    token = authorization.removeprefix("Bearer ")
+    auth.delete_session(token)
+    await hub.revoke(token)
     return {"ok": True}
 
 
@@ -56,18 +58,50 @@ class Hub:
     """In-memory matchmaking and live games."""
 
     def __init__(self):
-        self.sockets: dict[str, WebSocket] = {}
+        self.sockets: dict[str, set[WebSocket]] = {}
+        self.sessions: dict[str, set[WebSocket]] = {}
+        self.socket_users: dict[WebSocket, str] = {}
+        self.socket_tokens: dict[WebSocket, str] = {}
         self.games: dict[str, Game] = {}
         self.player_game: dict[str, str] = {}
         self.waiting: str | None = None
 
     async def send(self, user: str, msg: dict):
-        ws = self.sockets.get(user)
-        if ws:
+        for ws in tuple(self.sockets.get(user, ())):
             try:
                 await ws.send_json(msg)
             except Exception:
                 pass
+
+    def connect(self, user: str, token: str, ws: WebSocket):
+        self.sockets.setdefault(user, set()).add(ws)
+        self.sessions.setdefault(token, set()).add(ws)
+        self.socket_users[ws] = user
+        self.socket_tokens[ws] = token
+
+    async def revoke(self, token: str):
+        sockets = self.sessions.pop(token, set())
+        changed_users = set()
+        for ws in sockets:
+            user = self.socket_users.pop(ws, None)
+            self.socket_tokens.pop(ws, None)
+            if user:
+                self.sockets[user].discard(ws)
+                if not self.sockets[user]:
+                    del self.sockets[user]
+                    changed_users.add(user)
+            try:
+                await ws.close(code=4401)
+            except RuntimeError:
+                pass
+        for user in changed_users:
+            gid = self.player_game.get(user)
+            if gid:
+                await self.presence(self.games[gid])
+
+    def cleanup_game(self, game_id: str):
+        if game_id not in self.player_game.values():
+            self.games.pop(game_id, None)
 
     async def presence(self, game: Game):
         for name in game.players.values():
@@ -90,7 +124,10 @@ class Hub:
             opp, self.waiting = self.waiting, None
             game = Game(uuid.uuid4().hex[:8], opp, user)
             self.games[game.id] = game
+            old_games = {self.player_game[name] for name in (opp, user) if name in self.player_game}
             self.player_game[opp] = self.player_game[user] = game.id
+            for old_game in old_games:
+                self.cleanup_game(old_game)
             await self.broadcast(game)
         else:
             self.waiting = user
@@ -116,14 +153,23 @@ class Hub:
             await self.broadcast(game)
 
     async def disconnect(self, user: str, ws: WebSocket):
-        if self.sockets.get(user) is not ws:
-            return
-        del self.sockets[user]
-        if self.waiting == user:
+        self.socket_users.pop(ws, None)
+        token = self.socket_tokens.pop(ws, None)
+        if token:
+            self.sessions.get(token, set()).discard(ws)
+            if not self.sessions.get(token):
+                self.sessions.pop(token, None)
+        sockets = self.sockets.get(user)
+        if sockets:
+            sockets.discard(ws)
+            if not sockets:
+                del self.sockets[user]
+        if self.waiting == user and user not in self.sockets:
             self.waiting = None
-        gid = self.player_game.get(user)
-        if gid:
-            await self.presence(self.games[gid])
+        if user not in self.sockets:
+            gid = self.player_game.get(user)
+            if gid:
+                await self.presence(self.games[gid])
 
 
 hub = Hub()
@@ -132,18 +178,25 @@ hub = Hub()
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket, token: str = ""):
     user = auth.user_for_token(token)
+    await ws.accept()
     if not user:
         await ws.close(code=4401)
         return
-    await ws.accept()
-    hub.sockets[user] = ws
+    hub.connect(user, token, ws)
     gid = hub.player_game.get(user)
     if gid:
-        await hub.send(user, hub.games[gid].state())
+        await ws.send_json(hub.games[gid].state())
         await hub.presence(hub.games[gid])
+    elif hub.waiting == user:
+        await ws.send_json({"type": "waiting"})
+    else:
+        await ws.send_json({"type": "idle"})
     try:
         while True:
             msg = await ws.receive_json()
+            if auth.user_for_token(token) != user or ws not in hub.socket_users:
+                await ws.close(code=4401)
+                break
             if isinstance(msg, dict):
                 await hub.handle(user, msg)
     except (WebSocketDisconnect, RuntimeError):

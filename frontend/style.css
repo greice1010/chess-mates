@@ -33,3 +33,6 @@ button.secondary{background:transparent;border:1px solid var(--dark)}
 #moves tr:nth-child(even){background:#0a1f3860}
 .warn{background:#7a2f3b;border-radius:6px;padding:.5rem .8rem;margin:.5rem 0}
 .toggle{margin-top:1rem;text-align:center}.toggle a{color:#8fc1ff}
+[hidden]{display:none!important}
+.sq{padding:0;border:0;border-radius:0;font-weight:400}
+.sq:focus-visible{outline:3px solid #ffd54a;outline-offset:-3px;z-index:1}
