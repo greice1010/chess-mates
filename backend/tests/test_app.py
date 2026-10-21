@@ -43,7 +43,21 @@ def test_online_match():
         assert a.receive_json()["type"] == "waiting"
         b.send_json({"type": "find"})
         sa, sb = a.receive_json(), b.receive_json()
+        a.receive_json(), b.receive_json()
         assert sa["white"] == "player1" and sb["black"] == "player2"
         a.send_json({"type": "move", "uci": "e2e4"})
         assert b.receive_json()["moves"] == ["e2e4"]
-        a.receive_json()
+        b.receive_json()
+        a.receive_json(), a.receive_json()
+
+
+def test_opponent_presence():
+    t1, t2 = signup("pres1"), signup("pres2")
+    with client.websocket_connect(f"/ws?token={t1}") as a:
+        with client.websocket_connect(f"/ws?token={t2}") as b:
+            a.send_json({"type": "find"})
+            a.receive_json()
+            b.send_json({"type": "find"})
+            a.receive_json(); a.receive_json()
+            b.receive_json(); b.receive_json()
+        assert a.receive_json() == {"type": "presence", "online": False}

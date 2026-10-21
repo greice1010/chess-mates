@@ -16,7 +16,7 @@ function renderNav() {
   nav.innerHTML = '<a class="brand" href="/">♞ Chess Mates</a><a href="/rules.html">Rules</a>' +
     (user
       ? `<a href="/play.html">Play</a><span>${user.replace(/[<>&"]/g, "")}</span><a href="#" id="logout">Log out</a>`
-      : '<a href="/login.html">Log in</a><a href="/signup.html">Sign up</a>');
+      : '<a href="/login.html">Log in</a><a href="/login.html#signup">Sign up</a>');
   const lo = document.getElementById("logout");
   if (lo) lo.onclick = async (e) => {
     e.preventDefault();
@@ -26,7 +26,22 @@ function renderNav() {
   };
 }
 
-function authForm(kind) {
+function authForm() {
+  let kind = location.hash === "#signup" ? "signup" : "login";
+  const apply = () => {
+    const signup = kind === "signup";
+    const t = signup ? "Sign up" : "Log in";
+    document.title = t + " - Chess Mates";
+    document.getElementById("title").textContent = t;
+    document.getElementById("submit").textContent = t;
+    document.getElementById("password").autocomplete = signup ? "new-password" : "current-password";
+    document.getElementById("toggle").innerHTML = signup
+      ? 'Already have an account? <a href="#login">Log in</a>'
+      : 'New here? <a href="#signup">Create an account</a>';
+    document.getElementById("error").textContent = "";
+  };
+  window.addEventListener("hashchange", () => { kind = location.hash === "#signup" ? "signup" : "login"; apply(); });
+  apply();
   document.getElementById("form").onsubmit = async (e) => {
     e.preventDefault();
     const err = document.getElementById("error");

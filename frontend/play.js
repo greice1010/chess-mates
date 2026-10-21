@@ -15,6 +15,7 @@ function connect() {
     const m = JSON.parse(ev.data);
     if (m.type === "waiting") { $("status").textContent = "Waiting for an opponent…"; $("find").hidden = true; $("cancel").hidden = false; }
     else if (m.type === "idle") { $("status").textContent = "Find an opponent to start a game."; $("find").hidden = false; $("cancel").hidden = true; }
+    else if (m.type === "presence") { $("offline").hidden = m.online; }
     else if (m.type === "error") { $("err").textContent = m.message; }
     else if (m.type === "state") { state = m; selected = null; $("err").textContent = ""; render(); }
   };
@@ -52,7 +53,10 @@ function render() {
   if (state.check && !state.result) info += " — check!";
   $("info").textContent = info;
   $("resign").hidden = !!state.result; $("newgame").hidden = !state.result;
-  $("moves").textContent = state.moves.map((m, n) => (n % 2 ? "" : (n / 2 + 1) + ". ") + m).join(" ");
+  const rows = [];
+  for (let n = 0; n < state.moves.length; n += 2)
+    rows.push(`<tr><td class="n">${n / 2 + 1}.</td><td>${state.moves[n]}</td><td>${state.moves[n + 1] || ""}</td></tr>`);
+  $("moves").innerHTML = "<table>" + rows.join("") + "</table>";
 }
 
 function click(i, pieces, myColor) {

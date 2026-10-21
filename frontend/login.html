@@ -1,6 +1,7 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Log in - Chess Mates</title><link rel="stylesheet" href="/style.css"><script src="/common.js"></script></head>
-<body><nav id="nav"></nav><main><form id="form" class="card narrow"><h1>Log in</h1>
+<body><nav id="nav"></nav><main><form id="form" class="card narrow"><h1 id="title">Log in</h1>
 <label for="username">Username</label><input id="username" required autocomplete="username">
 <label for="password">Password</label><input id="password" type="password" required minlength="6" autocomplete="current-password">
-<p id="error" class="error"></p><button type="submit">Log in</button></form></main>
-<script>authForm("login")</script></body></html>
+<p id="error" class="error"></p><button type="submit" id="submit">Log in</button>
+<p id="toggle" class="toggle"></p></form></main>
+<script>authForm()</script></body></html>

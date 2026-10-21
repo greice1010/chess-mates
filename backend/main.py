@@ -69,9 +69,15 @@ class Hub:
             except Exception:
                 pass
 
+    async def presence(self, game: Game):
+        for name in game.players.values():
+            opp = next(n for n in game.players.values() if n != name)
+            await self.send(name, {"type": "presence", "online": opp in self.sockets})
+
     async def broadcast(self, game: Game):
         for name in game.players.values():
             await self.send(name, game.state())
+        await self.presence(game)
 
     async def find(self, user: str):
         gid = self.player_game.get(user)
@@ -115,6 +121,9 @@ class Hub:
         del self.sockets[user]
         if self.waiting == user:
             self.waiting = None
+        gid = self.player_game.get(user)
+        if gid:
+            await self.presence(self.games[gid])
 
 
 hub = Hub()
@@ -131,6 +140,7 @@ async def ws_endpoint(ws: WebSocket, token: str = ""):
     gid = hub.player_game.get(user)
     if gid:
         await hub.send(user, hub.games[gid].state())
+        await hub.presence(hub.games[gid])
     try:
         while True:
             msg = await ws.receive_json()
